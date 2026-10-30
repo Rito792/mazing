@@ -17,7 +17,7 @@ body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font:15px/1.4
 @keyframes p{to{transform:scale(1.3)}}
 @media(prefers-reduced-motion:reduce){#clk.hot{animation:none}}
 #wrap{position:relative;width:100%;max-width:520px}
-canvas{width:100%;height:auto;display:block;border-radius:8px;border:3px solid var(--fg);image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;background:#222;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+canvas{width:100%;height:auto;display:block;border-radius:8px;border:3px solid var(--fg);image-rendering:auto;touch-action:none;background:#222;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 #ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(14,22,16,.82);color:#fff;border-radius:8px;text-align:center;padding:16px}
 #ov h2{margin:0;font-size:30px}#ov p{margin:0;max-width:340px;opacity:.9}
 button{font:700 16px "Trebuchet MS",system-ui,sans-serif;padding:10px 22px;border:0;border-radius:6px;background:#f5c542;color:#222;cursor:pointer}
@@ -28,7 +28,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 <div id="wrap"><canvas id="c" width="576" height="590"></canvas><div id="ov"></div></div>
 <p id="help">P1: WASD (or swipe) + F or tap to shoot · P2: arrow keys + Enter to shoot. The Hunter hits the Prey within 2 tiles if no wall is between them; the Prey reaches the glowing gate. Everything flips every 5 seconds, then the screen whites out for 3 seconds while you keep moving. Stand still for more than 2 seconds and your opponent wins the round. First to 5 wins.</p>
 <script>
-const N=16,CY=5,T=32,H=14,c=document.getElementById('c'),g=c.getContext('2d',{alpha:false}),ov=document.getElementById('ov');g.imageSmoothingEnabled=false;
+const N=16,CY=5,T=32,H=14,c=document.getElementById('c'),g=c.getContext('2d'),ov=document.getElementById('ov');
 const D=[[0,-1],[0,1],[-1,0],[1,0]],K=[{u:'w',d:'s',l:'a',r:'d'},{u:'arrowup',d:'arrowdown',l:'arrowleft',r:'arrowright'}];
 let grid,exit,pl,mode=0,state='menu',score=[0,0],hunter=0,startH=0,time=5,flash=0,last=0,msgT=0,lastSec=0,ac,keys={};
 const ok=(x,y)=>x>=0&&y>=0&&x<N&&y<N,R=n=>Math.random()*n|0,nm=i=>((window.NM||[])[i]||'').trim()||(i?(mode==1?'CPU':mode==3?'Target':'Player 2'):'Player 1');
@@ -110,7 +110,7 @@ function update(dt){if(flash<=0)time-=dt;
   if(state!='play')return}}
 // Pokemon-style pixel sprite: 2px pixel grid, 4-frame walk cycle (stand, step, stand, step), 4 facings
 function pix(p,x,y,y0,h,fx,fy,mv){
- const f=mv?Math.floor(p.ph)%4:0,up=mv&&(f==1||f==3)?1:0,jc=h?'#d63a2b':'#2f6fd9',jd=h?'#a52a1e':'#2255b0',sk='#f2c9a0',ol='#10131a',hr=h?'#7a1c14':'#3a2a1e',pn='#262a35',bt='#14161c',
+ const f=mv?Math.floor(p.ph/1.7)%4:0,up=f&1?2:0,jc=h?'#d63a2b':'#2f6fd9',jd=h?'#a52a1e':'#2255b0',sk='#f2c9a0',ol='#10131a',hr=h?'#7a1c14':'#3a2a1e',pn='#262a35',bt='#14161c',
   r=(c,a,b,w,hh,nb)=>{g.fillStyle=c;g.fillRect(x+a,y+b-(nb?0:up),w,hh)},side=fy==0,s=f==1?3:f==3?-3:0,al=f==1?-2:f==3?2:0;
  g.fillStyle='rgba(0,0,0,.3)';g.fillRect(x-8,y0+11,16,4);g.fillRect(x-6,y0+15,12,2);
  if(side){
@@ -118,7 +118,7 @@ function pix(p,x,y,y0,h,fx,fy,mv){
   r(ol,-5,-5,10,12);r(jc,-4,-4,8,10);r('#e8c25a',-4,3,8,2);r(jd,-2-s,-3,4,8);r(sk,-2-s,4,4,2);
  }else{
   const dl=f==3?2:0,dr=f==1?2:0;
-  const ls=mv?(f==1?2:f==3?-2:0):0,rs=-ls;\n  r(pn,-6+ls,5,4,8-dl,1);r(bt,-6+ls,11-dl,4,2,1);r(pn,2+rs,5,4,8-dr,1);r(bt,2+rs,11-dr,4,2,1);
+  r(pn,-6,5,4,8-dl,1);r(bt,-6,11-dl,4,2,1);r(pn,2,5,4,8-dr,1);r(bt,2,11-dr,4,2,1);
   r(ol,-11,-5,22,12);r(jc,-6,-4,12,10);r(jd,2,-4,4,10);r('#e8c25a',-6,3,12,2);
   r(jc,-10,-4+al,4,8);r(jd,6,-4-al,4,8);r(sk,-10,4+al,4,2);r(sk,6,4-al,4,2);
  }
@@ -127,7 +127,7 @@ function pix(p,x,y,y0,h,fx,fy,mv){
  else{r(sk,-6,-16,12,12);r(hr,fx>0?-6:0,-16,6,12);r(hr,-6,-16,12,4);r('#111',fx>0?3:-5,-9,2,2)}
  if(h)r(hr,-7,-12,14,2);
 }
-function human(p,i){const x0=p.px*T+T/2,y0=p.py*T+H+T/2,h=i==hunter,o=pl[1-i],mvg=Math.abs(p.x-p.px)+Math.abs(p.y-p.py)>.05,w=mvg?Math.round(Math.sin(p.ph)*3):0,ax=o.x-p.x,ay=o.y-p.y,adx=Math.abs(ax)>=Math.abs(ay)?Math.sign(ax):0,ady=adx?0:Math.sign(ay),rc=p.shot>0?Math.min(1,p.shot/.25):0,x=Math.round((x0-adx*rc*3)/2)*2,y=Math.round((y0-ady*rc*2)/2)*2,fx=h?adx:p.fx,fy=h?ady:p.fy;
+function human(p,i){const x0=p.px*T+T/2,y0=p.py*T+H+T/2,h=i==hunter,o=pl[1-i],mvg=Math.abs(p.x-p.px)+Math.abs(p.y-p.py)>.05,w=mvg?Math.round(Math.sin(p.ph)*3):0,ax=o.x-p.x,ay=o.y-p.y,adx=Math.abs(ax)>=Math.abs(ay)?Math.sign(ax):0,ady=adx?0:Math.sign(ay),rc=p.shot>0?Math.min(1,p.shot/.25):0,x=Math.round((x0-adx*rc*3)/2)*2,y=Math.round((y0-ady*rc*2)/2)*2,fx=h&&p.shot>0?adx:p.fx,fy=h&&p.shot>0?ady:p.fy;
  pix(p,x,y,y0,h,fx,fy,mvg);
  if(h){g.strokeStyle='rgba(224,74,56,.45)';g.lineWidth=1.5;g.setLineDash([5,5]);g.beginPath();g.arc(x0,y0,2*T,0,7);g.stroke();g.setLineDash([]);const dx=adx,dy=ady,L=14-rc*4,sw=Math.sin(performance.now()/160)*.8*(1-rc),gx=Math.round(x+dx*L+Math.abs(dy)*sw),gy=Math.round(y-1+dy*L+Math.abs(dx)*sw);
   g.strokeStyle='#111';g.lineWidth=4;g.lineCap='butt';g.beginPath();g.moveTo(x+dx*4,y-1+dy*4);g.lineTo(gx,gy);g.stroke();g.strokeStyle='#6a6f7a';g.lineWidth=2;g.stroke();g.fillStyle='#f2c9a0';g.fillRect(x+dx*5-2,y-1+dy*5-2,4,4);
@@ -171,7 +171,7 @@ function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000
  if(state=='play')update(dt);
  else if(state=='msg'){msgT-=dt;if(msgT<=0)score.some(s=>s>=5)?over():newRound()}
  flash=Math.max(0,flash-dt);
- pl.forEach((p,i)=>{const sp=(mode==1&&i)?6:10,mv=(a,b)=>Math.abs(b-a)<=dt*sp?b:a+Math.sign(b-a)*dt*sp;const ox=p.px,oy=p.py;p.px=mv(p.px,p.x);p.py=mv(p.py,p.y);if(Math.abs(p.px-ox)+Math.abs(p.py-oy)>.0001)p.ph+=dt*10;if(p.shot>0&&!p.fl){p.fl=1;PT.push({x:p.px*T+T/2,y:p.py*T+H+T/2-2,vx:(Math.random()<.5?-1:1)*(.6+Math.random()*.6),vy:-1.3,g:6,l:.55,c:'245,205,70'})}p.shot=Math.max(0,p.shot-dt);if(!p.shot)p.fl=0;p.fc=Math.max(0,p.fc-dt)});for(let k=PT.length;k--;){const q=PT[k];q.x+=q.vx*30*dt;q.y+=q.vy*30*dt;q.vy+=(q.g||0)*dt;if((q.l-=dt)<=0)PT.splice(k,1)}sh=Math.max(0,sh-dt);
+ pl.forEach((p,i)=>{const sp=(mode==1&&i)?6:10,mv=(a,b)=>Math.abs(b-a)<=dt*sp?b:a+Math.sign(b-a)*dt*sp;const ox=p.px,oy=p.py;p.px=mv(p.px,p.x);p.py=mv(p.py,p.y);p.ph+=(Math.abs(p.px-ox)+Math.abs(p.py-oy))*3.4;if(p.shot>0&&!p.fl){p.fl=1;PT.push({x:p.px*T+T/2,y:p.py*T+H+T/2-2,vx:(Math.random()<.5?-1:1)*(.6+Math.random()*.6),vy:-1.3,g:6,l:.55,c:'245,205,70'})}p.shot=Math.max(0,p.shot-dt);if(!p.shot)p.fl=0;p.fc=Math.max(0,p.fc-dt)});for(let k=PT.length;k--;){const q=PT[k];q.x+=q.vx*30*dt;q.y+=q.vy*30*dt;q.vy+=(q.g||0)*dt;if((q.l-=dt)<=0)PT.splice(k,1)}sh=Math.max(0,sh-dt);
  draw();hud()}
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=performance.now();if(k.startsWith('arrow')||k==' ')e.preventDefault();if(!e.repeat){for(let i=0;i<2;i++){const v=keyDir(i,k);if(v){pl[i].buf=v;pl[i].bt=.14}}if(k=='f'||k==' '||(mode&&k=='enter'))fire(0);else if(!mode&&(k=='enter'||k=='m'))fire(1)}});
 addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=0});
@@ -189,7 +189,7 @@ window.NM=[...(LS('stnm')||[]),'',''].slice(0,2).map(clean);
 const isTouch=matchMedia('(pointer:coarse)').matches||'ontouchstart' in window,LOW=isTouch||(navigator.hardwareConcurrency||8)<=4,useTouch=()=>cfg.touch===null?isTouch:cfg.touch;
 const net={role:'none',rm:null,un:[],fresh:0,gk:'',ls:'',started:false,seen:0,to:0};
 let gin={d:null,f:0},lastEnd={w:0,m:''},jdir=null,jid=null,setOpen=false,padOn=null,FCg=null;
-document.head.insertAdjacentHTML('beforeend',`<style>#tb{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:3}#tb button{padding:4px 10px;font-size:16px;background:rgba(0,0,0,.6);color:#fff}#pad{display:none;width:100%;max-width:520px;justify-content:space-between;align-items:center;padding:4px 10px;touch-action:none;user-select:none;-webkit-user-select:none}#joy{position:relative;border-radius:50%;background:rgba(120,120,120,.35);border:3px solid var(--fg);transition:width .25s,height .25s}#knob{position:absolute;left:50%;top:50%;width:42%;height:42%;margin:-21% 0 0 -21%;border-radius:50%;background:#f5c542;border:2px solid #222;pointer-events:none}#fbtn{border-radius:50%;background:#d9402f;color:#fff;border:3px solid var(--fg);padding:0;transition:width .25s,height .25s,font-size .25s}#set{position:absolute;left:50%;top:50%;width:86%;max-width:380px;transform:translate(-50%,-50%) scale(.9);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;background:var(--pan);color:var(--fg);border:3px solid var(--fg);border-radius:10px;padding:12px 16px;z-index:4;display:flex;flex-direction:column;gap:8px}#set.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}#set h3{margin:0}#set label{display:flex;flex-direction:column;font-size:13px;gap:2px}#set label.ck{flex-direction:row;gap:8px;align-items:center}#set input:not([type=range]):not([type=checkbox]),#ov input{font:600 16px sans-serif;padding:6px;border:2px solid var(--fg);border-radius:6px}#ov input{text-align:center;text-transform:uppercase;letter-spacing:3px;max-width:230px;border-color:#f5c542;background:#fff;color:#1d2a1f}.rcode{font:800 30px monospace;letter-spacing:5px;background:rgba(255,255,255,.12);padding:8px 16px;border-radius:8px;user-select:all}</style>`);
+document.head.insertAdjacentHTML('beforeend',`<style>@media(pointer:coarse){#wrap{max-width:max(240px,min(520px,calc((100vh - 270px)*.976)))}#wrap{max-width:max(240px,min(520px,calc((100dvh - 270px)*.976)))}}#pad,#pad *{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}#tb{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:3}#tb button{padding:4px 10px;font-size:16px;background:rgba(0,0,0,.6);color:#fff}#pad{display:none;width:100%;max-width:520px;justify-content:space-between;align-items:center;padding:4px 10px;touch-action:none;user-select:none;-webkit-user-select:none}#joy{position:relative;border-radius:50%;background:rgba(120,120,120,.35);border:3px solid var(--fg);transition:width .25s,height .25s}#knob{position:absolute;left:50%;top:50%;width:42%;height:42%;margin:-21% 0 0 -21%;border-radius:50%;background:#f5c542;border:2px solid #222;pointer-events:none}#fbtn{border-radius:50%;background:#d9402f;color:#fff;border:3px solid var(--fg);padding:0;transition:width .25s,height .25s,font-size .25s}#set{position:absolute;left:50%;top:50%;width:86%;max-width:380px;transform:translate(-50%,-50%) scale(.9);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;background:var(--pan);color:var(--fg);border:3px solid var(--fg);border-radius:10px;padding:12px 16px;z-index:4;display:flex;flex-direction:column;gap:8px}#set.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}#set h3{margin:0}#set label{display:flex;flex-direction:column;font-size:13px;gap:2px}#set label.ck{flex-direction:row;gap:8px;align-items:center}#set input:not([type=range]):not([type=checkbox]),#ov input{font:600 16px sans-serif;padding:6px;border:2px solid var(--fg);border-radius:6px}#ov input{text-align:center;text-transform:uppercase;letter-spacing:3px;max-width:230px;border-color:#f5c542;background:#fff;color:#1d2a1f}.rcode{font:800 30px monospace;letter-spacing:5px;background:rgba(255,255,255,.12);padding:8px 16px;border-radius:8px;user-select:all}</style>`);
 const wrap=document.getElementById('wrap');
 wrap.insertAdjacentHTML('beforeend',`<div id='tb'><button id='gear' aria-label='Settings'>⚙</button><button id='xit' aria-label='Exit game'>✕</button></div><div id='set'></div>`);
 wrap.insertAdjacentHTML('afterend',`<div id='pad'><div id='joy'><div id='knob'></div></div><button id='fbtn'>FIRE</button></div>`);
@@ -204,86 +204,31 @@ function closeSet(){setOpen=false;setEl.classList.remove('on')}
 $('gear').onclick=()=>setOpen?closeSet():openSet();
 xit.onclick=()=>menu();
 addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')e.stopImmediatePropagation()},true);
-
-// Mobile joystick movement — reliable pointer and touch handling
-joy.style.touchAction = 'none';
-pad.style.touchAction = 'none';
-
-function jmove(e) {
-  const r = joy.getBoundingClientRect();
-  const rad = r.width / 2;
-  const dx = e.clientX - (r.left + rad);
-  const dy = e.clientY - (r.top + rad);
-  const m = Math.hypot(dx, dy);
-  const k = Math.min(1, rad / (m || 1));
-
-  knob.style.transform = `translate(${dx * k * .58}px,${dy * k * .58}px)`;
-
-  const threshold = rad * (.5 - .4 * cfg.sens);
-
-  if (m > threshold) {
-    jdir = Math.abs(dx) > Math.abs(dy)
-      ? [Math.sign(dx), 0]
-      : [0, Math.sign(dy)];
-  } else {
-    jdir = null;
-  }
-}
-
-function jend(e) {
-  if (jid !== null && e.pointerId !== undefined && e.pointerId !== jid) return;
-
-  jid = null;
-  jdir = null;
-  knob.style.transform = '';
-}
-
-joy.addEventListener('pointerdown', e => {
-  e.preventDefault();
-  jid = e.pointerId;
-
-  try {
-    joy.setPointerCapture(e.pointerId);
-  } catch (err) {}
-
-  jmove(e);
-});
-
-joy.addEventListener('pointermove', e => {
-  if (e.pointerId !== jid) return;
-  e.preventDefault();
-  jmove(e);
-});
-
-joy.addEventListener('pointerup', jend);
-joy.addEventListener('pointercancel', jend);
-joy.addEventListener('lostpointercapture', jend);
-
-// Fallback for browsers without Pointer Events
-if (!window.PointerEvent) {
-  joy.addEventListener('touchstart', e => {
-    e.preventDefault();
-    const t = e.touches[0];
-    if (t) jmove(t);
-  }, { passive: false });
-
-  joy.addEventListener('touchmove', e => {
-    e.preventDefault();
-    const t = e.touches[0];
-    if (t) jmove(t);
-  }, { passive: false });
-
-  const touchEnd = e => {
-    e.preventDefault();
-    jend({});
-  };
-
-  joy.addEventListener('touchend', touchEnd, { passive: false });
-  joy.addEventListener('touchcancel', touchEnd, { passive: false });
-}
-
+// Joystick (same dirOf path as the keyboard, so same step speed)
+function jmove(e){const r=joy.getBoundingClientRect(),rad=r.width/2,dx=e.clientX-(r.left+rad),dy=e.clientY-(r.top+rad),m=Math.hypot(dx,dy),k=Math.min(1,rad/(m||1));
+ knob.style.transform=`translate(${dx*k*.58}px,${dy*k*.58}px)`;
+ jdir=m>rad*(.5-.4*cfg.sens)?(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]):null}
+joy.addEventListener('pointerdown',e=>{if(e.pointerType=='touch')return;jid=e.pointerId;try{joy.setPointerCapture(e.pointerId)}catch(_){}jmove(e)});
+joy.addEventListener('pointermove',e=>{if(e.pointerId===jid)jmove(e)});
+const jend=e=>{if(e.pointerId===jid){jid=null;jdir=null;knob.style.transform=''}};
+joy.addEventListener('pointerup',jend);joy.addEventListener('pointercancel',jend);
+fbtn.addEventListener('pointerdown',e=>{if(e.pointerType=='touch')return;e.preventDefault();fire(0)});
+applyCfg();
+// Touch input via touch events (works in every mobile webview): fixed joystick, floating stick on the arena (drag), tap arena = fire
+let tj=null,ta=null,ao=null,at=0,am=0,adir=null;
+const tp=(e,id)=>{for(const t of e.changedTouches)if(t.identifier===id)return t};
+joy.addEventListener('touchstart',e=>{e.preventDefault();if(tj!==null)return;const t=e.changedTouches[0];tj=t.identifier;jmove(t)},{passive:false});
+joy.addEventListener('touchmove',e=>{e.preventDefault();const t=tp(e,tj);if(t)jmove(t)},{passive:false});
+const tjend=e=>{if(tp(e,tj)){tj=null;jdir=null;knob.style.transform=''}};
+joy.addEventListener('touchend',tjend);joy.addEventListener('touchcancel',tjend);
+fbtn.addEventListener('touchstart',e=>{e.preventDefault();fire(0)},{passive:false});
+wrap.addEventListener('touchstart',e=>{if(e.target!==c)return;e.preventDefault();e.stopPropagation();if(ta!==null)return;const t=e.changedTouches[0];ta=t.identifier;ao=[t.clientX,t.clientY];at=performance.now();am=0},{capture:true,passive:false});
+wrap.addEventListener('touchmove',e=>{if(ta===null)return;e.preventDefault();e.stopPropagation();const t=tp(e,ta);if(!t)return;const dx=t.clientX-ao[0],dy=t.clientY-ao[1],m=Math.hypot(dx,dy);am=Math.max(am,m);
+ adir=m>14?(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]):null;if(m>40){ao[0]+=dx*.5;ao[1]+=dy*.5}},{capture:true,passive:false});
+const aend=e=>{if(ta===null||!tp(e,ta))return;e.stopPropagation();ta=null;adir=null;if(am<14&&performance.now()-at<350)fire(0)};
+wrap.addEventListener('touchend',aend,{capture:true});wrap.addEventListener('touchcancel',aend,{capture:true});
 // Wrappers: input routing, online guard, sounds
-const _dirOf=dirOf;dirOf=function(i){if(net.role=='host')return i?gin.d:(jdir||_dirOf(0));if(net.role=='guest')return jdir||_dirOf(0);return i==0?(jdir||_dirOf(0)):_dirOf(i)};
+const _dirOf=dirOf;dirOf=function(i){const c0=jdir||adir;if(net.role=='host')return i?gin.d:(c0||_dirOf(0));if(net.role=='guest')return c0||_dirOf(0);return i==0?(c0||_dirOf(0)):_dirOf(i)};
 const _keyDir=keyDir;keyDir=function(i,k){if(net.role=='guest')return;if(net.role=='host')return i?undefined:_keyDir(0,k);return _keyDir(i,k)};
 const _fire=fire;fire=function(i){if(net.role=='guest'){if(i==0){net.fc=(net.fc|0)+1;net.rm&&net.rm.presence({f:net.fc}).catch(()=>{})}return}_fire(i)};
 const _tryMove=tryMove;tryMove=function(i,dx,dy){if(net.role=='guest')return;_tryMove(i,dx,dy)};
@@ -298,7 +243,7 @@ function jingle(win){(win?[523,659,784,1047]:[392,330,262]).forEach((f,i)=>setTi
 function whoosh(){for(let i=0;i<7;i++)setTimeout(()=>sfx(260+i*110,.07,'sine'),i*35)}
 function roamHit(w){if(w==hunter){pl[w].shot=.5;bang();sh=.3}const o=pl[1],p=pl[0];for(let t=0;t<200;t++){const x=R(N),y=R(N);if(!grid[y][x]&&Math.abs(x-p.x)+Math.abs(y-p.y)>5){o.x=o.px=x;o.y=o.py=y;break}}gen()}
 const _end=end;end=function(w,m){lastEnd={w:w,m:m};if(m=='Escaped through the gate!')whoosh();else if(m=='Shot the Prey!')sfx(140,.2,'square');if(mode==3)return roamHit(w);_end(w,m);jingle(w==0||mode==0)};
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('button')){ac=ac||new (window.AudioContext||window.webkitAudioContext)();sfx(700,.04,'triangle')}});
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('button')){ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume&&ac.resume();sfx(700,.04,'triangle')}});
 // Floor cache (one drawImage per frame instead of 256 tiles)
 const FC=document.createElement('canvas');FC.width=FC.height=N*T;
 function buildFloor(){FCg=grid;const q=FC.getContext('2d');for(let y=0;y<N;y++)for(let x=0;x<N;x++){q.drawImage(FL[(x*5+y*3+x*y)%3],x*T,y*T);if(y==0||grid[y-1][x]){q.fillStyle='rgba(0,0,0,.28)';q.fillRect(x*T,y*T,T,3);q.fillStyle='rgba(0,0,0,.16)';q.fillRect(x*T,y*T+3,T,3)}if(x==0||grid[y][x-1]){q.fillStyle='rgba(0,0,0,.14)';q.fillRect(x*T,y*T,4,T)}}}
@@ -338,6 +283,6 @@ function closeNet(){net.un.forEach(u=>{try{u()}catch(e){}});net.un=[];clearTimeo
 setInterval(()=>{const rm=net.rm;if(!rm)return;
  if(net.role=='host'&&net.started&&grid&&pl)rm.presence({r:'host',n:NM[0],s:{st:state,g:grid.map(r=>r.reduce((a,b)=>a*2+b,0)),e:[exit.x,exit.y],p:pl.map(p=>[p.x,p.y,p.fx,p.fy,+(p.shot>0),+p.idle.toFixed(1)]),h:hunter,t:+time.toFixed(2),f:+flash.toFixed(2),sc:score,lw:lastEnd.w,lm:lastEnd.m||''}}).catch(()=>{});
  else if(net.role=='guest'){const d=dirOf(1),k=d?d+'':'';if(k!==net.ls){net.ls=k;rm.presence({d:d}).catch(()=>{})}}},60);
-document.getElementById('help').textContent+=' On phones use the joystick and FIRE button; open the gear to change their size and sensitivity or set player names.';
+document.getElementById('help').textContent+=' On phones use the joystick (or drag anywhere on the arena) and the FIRE button (or tap the arena); open the gear to change their size and sensitivity or set player names.';
 window.FCok=1;menu();
 </script></body></html>
