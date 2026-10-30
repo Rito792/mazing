@@ -204,16 +204,84 @@ function closeSet(){setOpen=false;setEl.classList.remove('on')}
 $('gear').onclick=()=>setOpen?closeSet():openSet();
 xit.onclick=()=>menu();
 addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')e.stopImmediatePropagation()},true);
-// Joystick (same dirOf path as the keyboard, so same step speed)
-function jmove(e){const r=joy.getBoundingClientRect(),rad=r.width/2,dx=e.clientX-(r.left+rad),dy=e.clientY-(r.top+rad),m=Math.hypot(dx,dy),k=Math.min(1,rad/(m||1));
- knob.style.transform=`translate(${dx*k*.58}px,${dy*k*.58}px)`;
- jdir=m>rad*(.5-.4*cfg.sens)?(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]):null}
-joy.addEventListener('pointerdown',e=>{jid=e.pointerId;joy.setPointerCapture(e.pointerId);jmove(e)});
-joy.addEventListener('pointermove',e=>{if(e.pointerId===jid)jmove(e)});
-const jend=e=>{if(e.pointerId===jid){jid=null;jdir=null;knob.style.transform=''}};
-joy.addEventListener('pointerup',jend);joy.addEventListener('pointercancel',jend);
-fbtn.addEventListener('pointerdown',e=>{e.preventDefault();fire(0)});
-applyCfg();
+
+// Mobile joystick movement — reliable pointer and touch handling
+joy.style.touchAction = 'none';
+pad.style.touchAction = 'none';
+
+function jmove(e) {
+  const r = joy.getBoundingClientRect();
+  const rad = r.width / 2;
+  const dx = e.clientX - (r.left + rad);
+  const dy = e.clientY - (r.top + rad);
+  const m = Math.hypot(dx, dy);
+  const k = Math.min(1, rad / (m || 1));
+
+  knob.style.transform = `translate(${dx * k * .58}px,${dy * k * .58}px)`;
+
+  const threshold = rad * (.5 - .4 * cfg.sens);
+
+  if (m > threshold) {
+    jdir = Math.abs(dx) > Math.abs(dy)
+      ? [Math.sign(dx), 0]
+      : [0, Math.sign(dy)];
+  } else {
+    jdir = null;
+  }
+}
+
+function jend(e) {
+  if (jid !== null && e.pointerId !== undefined && e.pointerId !== jid) return;
+
+  jid = null;
+  jdir = null;
+  knob.style.transform = '';
+}
+
+joy.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  jid = e.pointerId;
+
+  try {
+    joy.setPointerCapture(e.pointerId);
+  } catch (err) {}
+
+  jmove(e);
+});
+
+joy.addEventListener('pointermove', e => {
+  if (e.pointerId !== jid) return;
+  e.preventDefault();
+  jmove(e);
+});
+
+joy.addEventListener('pointerup', jend);
+joy.addEventListener('pointercancel', jend);
+joy.addEventListener('lostpointercapture', jend);
+
+// Fallback for browsers without Pointer Events
+if (!window.PointerEvent) {
+  joy.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    if (t) jmove(t);
+  }, { passive: false });
+
+  joy.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    if (t) jmove(t);
+  }, { passive: false });
+
+  const touchEnd = e => {
+    e.preventDefault();
+    jend({});
+  };
+
+  joy.addEventListener('touchend', touchEnd, { passive: false });
+  joy.addEventListener('touchcancel', touchEnd, { passive: false });
+}
+
 // Wrappers: input routing, online guard, sounds
 const _dirOf=dirOf;dirOf=function(i){if(net.role=='host')return i?gin.d:(jdir||_dirOf(0));if(net.role=='guest')return jdir||_dirOf(0);return i==0?(jdir||_dirOf(0)):_dirOf(i)};
 const _keyDir=keyDir;keyDir=function(i,k){if(net.role=='guest')return;if(net.role=='host')return i?undefined:_keyDir(0,k);return _keyDir(i,k)};
