@@ -221,7 +221,74 @@ joy.addEventListener('touchstart',e=>{e.preventDefault();if(tj!==null)return;con
 joy.addEventListener('touchmove',e=>{e.preventDefault();const t=tp(e,tj);if(t)jmove(t)},{passive:false});
 const tjend=e=>{if(tp(e,tj)){tj=null;jdir=null;knob.style.transform=''}};
 joy.addEventListener('touchend',tjend);joy.addEventListener('touchcancel',tjend);
-fbtn.addEventListener('touchstart',e=>{e.preventDefault();fire(0)},{passive:false});
+
+// Mobile joystick — unified Pointer Events handling
+joy.style.touchAction = 'none';
+pad.style.touchAction = 'none';
+fbtn.style.touchAction = 'none';
+
+function jmove(e) {
+  const r = joy.getBoundingClientRect();
+  const rad = r.width / 2;
+  const dx = e.clientX - (r.left + rad);
+  const dy = e.clientY - (r.top + rad);
+  const distance = Math.hypot(dx, dy);
+  const scale = Math.min(1, rad / (distance || 1));
+
+  knob.style.transform =
+    `translate(${dx * scale * .58}px,${dy * scale * .58}px)`;
+
+  const threshold = rad * (.5 - .4 * cfg.sens);
+
+  if (distance > threshold) {
+    jdir = Math.abs(dx) > Math.abs(dy)
+      ? [Math.sign(dx), 0]
+      : [0, Math.sign(dy)];
+  } else {
+    jdir = null;
+  }
+}
+
+function jend(e) {
+  if (jid === null) return;
+  if (e && e.pointerId !== undefined && e.pointerId !== jid) return;
+
+  jid = null;
+  jdir = null;
+  knob.style.transform = '';
+}
+
+joy.addEventListener('pointerdown', e => {
+  e.preventDefault();
+
+  if (jid !== null) return;
+
+  jid = e.pointerId;
+
+  try {
+    joy.setPointerCapture(e.pointerId);
+  } catch (_) {}
+
+  jmove(e);
+});
+
+window.addEventListener('pointermove', e => {
+  if (e.pointerId !== jid) return;
+
+  e.preventDefault();
+  jmove(e);
+}, { passive: false });
+
+window.addEventListener('pointerup', jend);
+window.addEventListener('pointercancel', jend);
+joy.addEventListener('lostpointercapture', jend);
+
+// Fire button
+fbtn.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  fire(0);
+});
+
 wrap.addEventListener('touchstart',e=>{if(e.target!==c)return;e.preventDefault();e.stopPropagation();if(ta!==null)return;const t=e.changedTouches[0];ta=t.identifier;ao=[t.clientX,t.clientY];at=performance.now();am=0},{capture:true,passive:false});
 wrap.addEventListener('touchmove',e=>{if(ta===null)return;e.preventDefault();e.stopPropagation();const t=tp(e,ta);if(!t)return;const dx=t.clientX-ao[0],dy=t.clientY-ao[1],m=Math.hypot(dx,dy);am=Math.max(am,m);
  adir=m>14?(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]):null;if(m>40){ao[0]+=dx*.5;ao[1]+=dy*.5}},{capture:true,passive:false});
