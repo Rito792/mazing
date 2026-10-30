@@ -186,7 +186,7 @@ const LS=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem(k))
 const cfg=Object.assign({sens:.5,joy:110,fire:84,touch:null},LS('stcfg')||{});
 const clean=s=>String(s||'').replace(/[^\p{L}\p{N} _.\-]/gu,'').trim().slice(0,12);
 window.NM=[...(LS('stnm')||[]),'',''].slice(0,2).map(clean);
-const isTouch=matchMedia('(pointer:coarse)').matches||'ontouchstart' in window,LOW=isTouch||(navigator.hardwareConcurrency||8)<=4,useTouch=()=>cfg.touch===null?isTouch:cfg.touch;
+const isTouch=matchMedia('(pointer:coarse)').matches||'ontouchstart' in window||navigator.maxTouchPoints>0||matchMedia('(max-width:700px)').matches,LOW=isTouch||(navigator.hardwareConcurrency||8)<=4,useTouch=()=>cfg.touch===null?isTouch:cfg.touch;
 const net={role:'none',rm:null,un:[],fresh:0,gk:'',ls:'',started:false,seen:0,to:0};
 let gin={d:null,f:0},lastEnd={w:0,m:''},jdir=null,jid=null,setOpen=false,padOn=null,FCg=null;
 document.head.insertAdjacentHTML('beforeend',`<style>@media(pointer:coarse){#wrap{max-width:max(240px,min(520px,calc((100vh - 270px)*.976)))}#wrap{max-width:max(240px,min(520px,calc((100dvh - 270px)*.976)))}}#pad,#pad *{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}#tb{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:3}#tb button{padding:4px 10px;font-size:16px;background:rgba(0,0,0,.6);color:#fff}#pad{display:none;width:100%;max-width:520px;justify-content:space-between;align-items:center;padding:4px 10px;touch-action:none;user-select:none;-webkit-user-select:none}#joy{position:relative;border-radius:50%;background:rgba(120,120,120,.35);border:3px solid var(--fg);transition:width .25s,height .25s}#knob{position:absolute;left:50%;top:50%;width:42%;height:42%;margin:-21% 0 0 -21%;border-radius:50%;background:#f5c542;border:2px solid #222;pointer-events:none}#fbtn{border-radius:50%;background:#d9402f;color:#fff;border:3px solid var(--fg);padding:0;transition:width .25s,height .25s,font-size .25s}#set{position:absolute;left:50%;top:50%;width:86%;max-width:380px;transform:translate(-50%,-50%) scale(.9);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;background:var(--pan);color:var(--fg);border:3px solid var(--fg);border-radius:10px;padding:12px 16px;z-index:4;display:flex;flex-direction:column;gap:8px}#set.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}#set h3{margin:0}#set label{display:flex;flex-direction:column;font-size:13px;gap:2px}#set label.ck{flex-direction:row;gap:8px;align-items:center}#set input:not([type=range]):not([type=checkbox]),#ov input{font:600 16px sans-serif;padding:6px;border:2px solid var(--fg);border-radius:6px}#ov input{text-align:center;text-transform:uppercase;letter-spacing:3px;max-width:230px;border-color:#f5c542;background:#fff;color:#1d2a1f}.rcode{font:800 30px monospace;letter-spacing:5px;background:rgba(255,255,255,.12);padding:8px 16px;border-radius:8px;user-select:all}</style>`);
@@ -208,92 +208,27 @@ addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')e.stopImmediatePropa
 function jmove(e){const r=joy.getBoundingClientRect(),rad=r.width/2,dx=e.clientX-(r.left+rad),dy=e.clientY-(r.top+rad),m=Math.hypot(dx,dy),k=Math.min(1,rad/(m||1));
  knob.style.transform=`translate(${dx*k*.58}px,${dy*k*.58}px)`;
  jdir=m>rad*(.5-.4*cfg.sens)?(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]):null}
-joy.addEventListener('pointerdown',e=>{if(e.pointerType=='touch')return;jid=e.pointerId;try{joy.setPointerCapture(e.pointerId)}catch(_){}jmove(e)});
-joy.addEventListener('pointermove',e=>{if(e.pointerId===jid)jmove(e)});
-const jend=e=>{if(e.pointerId===jid){jid=null;jdir=null;knob.style.transform=''}};
-joy.addEventListener('pointerup',jend);joy.addEventListener('pointercancel',jend);
-fbtn.addEventListener('pointerdown',e=>{if(e.pointerType=='touch')return;e.preventDefault();fire(0)});
+// Unified touch controller: uses Pointer Events or Touch Events, whichever the browser delivers first (iOS Safari, Android, in-app viewers)
+const ft=(l,id)=>{for(let i=0;i<l.length;i++)if(l[i].identifier===id)return l[i]};
+function bindStick(el,cap,okf,start,move,end){let kind=null,id=null;const o={capture:cap,passive:false};
+ const go=(k,i,x,y,e)=>{if(kind||!okf(e))return;kind=k;id=i;e.preventDefault();e.stopPropagation();start(x,y)};
+ const mv=(k,i,x,y,e)=>{if(kind!==k||id!==i)return;e.preventDefault();e.stopPropagation();move(x,y)};
+ const up=(k,i,e)=>{if(kind!==k||id!==i)return;kind=null;id=null;e.stopPropagation();end()};
+ el.addEventListener('pointerdown',e=>{go('p',e.pointerId,e.clientX,e.clientY,e);if(kind=='p'){try{el.setPointerCapture(e.pointerId)}catch(_){}}},o);
+ el.addEventListener('pointermove',e=>mv('p',e.pointerId,e.clientX,e.clientY,e),o);
+ el.addEventListener('pointerup',e=>up('p',e.pointerId,e),o);el.addEventListener('pointercancel',e=>up('p',e.pointerId,e),o);
+ el.addEventListener('touchstart',e=>{const t=e.changedTouches[0];go('t',t.identifier,t.clientX,t.clientY,e)},o);
+ el.addEventListener('touchmove',e=>{if(kind!=='t')return;const t=ft(e.changedTouches,id);if(t)mv('t',id,t.clientX,t.clientY,e)},o);
+ const te=e=>{if(kind!=='t'||!ft(e.changedTouches,id))return;up('t',id,e)};
+ el.addEventListener('touchend',te,o);el.addEventListener('touchcancel',te,o)}
+const jm=(x,y)=>jmove({clientX:x,clientY:y});
+bindStick(joy,false,()=>true,jm,jm,()=>{jdir=null;knob.style.transform=''});
+bindStick(fbtn,false,()=>true,()=>fire(0),()=>{},()=>{});
+// Floating stick on the arena: drag anywhere to move, quick tap = fire
+let ao=null,at=0,am=0,adir=null;
+bindStick(wrap,true,e=>e.target===c&&e.pointerType!='mouse',(x,y)=>{ao=[x,y];at=performance.now();am=0},(x,y)=>{const dx=x-ao[0],dy=y-ao[1],m=Math.hypot(dx,dy);am=Math.max(am,m);
+ adir=m>14?(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]):null;if(m>40){ao[0]+=dx*.5;ao[1]+=dy*.5}},()=>{adir=null;if(am<14&&performance.now()-at<350)fire(0)});
 applyCfg();
-// Touch input via touch events (works in every mobile webview): fixed joystick, floating stick on the arena (drag), tap arena = fire
-let tj=null,ta=null,ao=null,at=0,am=0,adir=null;
-const tp=(e,id)=>{for(const t of e.changedTouches)if(t.identifier===id)return t};
-joy.addEventListener('touchstart',e=>{e.preventDefault();if(tj!==null)return;const t=e.changedTouches[0];tj=t.identifier;jmove(t)},{passive:false});
-joy.addEventListener('touchmove',e=>{e.preventDefault();const t=tp(e,tj);if(t)jmove(t)},{passive:false});
-const tjend=e=>{if(tp(e,tj)){tj=null;jdir=null;knob.style.transform=''}};
-joy.addEventListener('touchend',tjend);joy.addEventListener('touchcancel',tjend);
-
-// Mobile joystick — unified Pointer Events handling
-joy.style.touchAction = 'none';
-pad.style.touchAction = 'none';
-fbtn.style.touchAction = 'none';
-
-function jmove(e) {
-  const r = joy.getBoundingClientRect();
-  const rad = r.width / 2;
-  const dx = e.clientX - (r.left + rad);
-  const dy = e.clientY - (r.top + rad);
-  const distance = Math.hypot(dx, dy);
-  const scale = Math.min(1, rad / (distance || 1));
-
-  knob.style.transform =
-    `translate(${dx * scale * .58}px,${dy * scale * .58}px)`;
-
-  const threshold = rad * (.5 - .4 * cfg.sens);
-
-  if (distance > threshold) {
-    jdir = Math.abs(dx) > Math.abs(dy)
-      ? [Math.sign(dx), 0]
-      : [0, Math.sign(dy)];
-  } else {
-    jdir = null;
-  }
-}
-
-function jend(e) {
-  if (jid === null) return;
-  if (e && e.pointerId !== undefined && e.pointerId !== jid) return;
-
-  jid = null;
-  jdir = null;
-  knob.style.transform = '';
-}
-
-joy.addEventListener('pointerdown', e => {
-  e.preventDefault();
-
-  if (jid !== null) return;
-
-  jid = e.pointerId;
-
-  try {
-    joy.setPointerCapture(e.pointerId);
-  } catch (_) {}
-
-  jmove(e);
-});
-
-window.addEventListener('pointermove', e => {
-  if (e.pointerId !== jid) return;
-
-  e.preventDefault();
-  jmove(e);
-}, { passive: false });
-
-window.addEventListener('pointerup', jend);
-window.addEventListener('pointercancel', jend);
-joy.addEventListener('lostpointercapture', jend);
-
-// Fire button
-fbtn.addEventListener('pointerdown', e => {
-  e.preventDefault();
-  fire(0);
-});
-
-wrap.addEventListener('touchstart',e=>{if(e.target!==c)return;e.preventDefault();e.stopPropagation();if(ta!==null)return;const t=e.changedTouches[0];ta=t.identifier;ao=[t.clientX,t.clientY];at=performance.now();am=0},{capture:true,passive:false});
-wrap.addEventListener('touchmove',e=>{if(ta===null)return;e.preventDefault();e.stopPropagation();const t=tp(e,ta);if(!t)return;const dx=t.clientX-ao[0],dy=t.clientY-ao[1],m=Math.hypot(dx,dy);am=Math.max(am,m);
- adir=m>14?(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]):null;if(m>40){ao[0]+=dx*.5;ao[1]+=dy*.5}},{capture:true,passive:false});
-const aend=e=>{if(ta===null||!tp(e,ta))return;e.stopPropagation();ta=null;adir=null;if(am<14&&performance.now()-at<350)fire(0)};
-wrap.addEventListener('touchend',aend,{capture:true});wrap.addEventListener('touchcancel',aend,{capture:true});
 // Wrappers: input routing, online guard, sounds
 const _dirOf=dirOf;dirOf=function(i){const c0=jdir||adir;if(net.role=='host')return i?gin.d:(c0||_dirOf(0));if(net.role=='guest')return c0||_dirOf(0);return i==0?(c0||_dirOf(0)):_dirOf(i)};
 const _keyDir=keyDir;keyDir=function(i,k){if(net.role=='guest')return;if(net.role=='host')return i?undefined:_keyDir(0,k);return _keyDir(i,k)};
