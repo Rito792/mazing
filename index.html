@@ -224,29 +224,13 @@ function bindStick(el,cap,okf,start,move,end){let kind=null,id=null;const o={cap
 const jm=(x,y)=>jmove({clientX:x,clientY:y});
 bindStick(joy,false,()=>true,jm,jm,()=>{jdir=null;knob.style.transform=''});
 bindStick(fbtn,false,()=>true,()=>fire(0),()=>{},()=>{});
-// Arena swipe controls: one tile per swipe, matching the reference mobile movement.
-// The fixed joystick remains available as an additional control.
-let ao=null,at=0,am=0,al=null;
-bindStick(wrap,true,e=>e.target===c&&e.pointerType!=='mouse',
- (x,y)=>{ao=[x,y];al=[x,y];at=performance.now();am=0},
- (x,y)=>{al=[x,y];am=Math.max(am,Math.hypot(x-ao[0],y-ao[1]))},
- ()=>{
-  if(!ao||!al)return;
-  const dx=al[0]-ao[0],dy=al[1]-ao[1],elapsed=performance.now()-at;
-  ao=null;al=null;
-  if(am<20){if(elapsed<350)fire(0);return}
-  if(net.role==='guest'){
-   const d=Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)];
-   if(net.rm)net.rm.presence({d}).catch(()=>{});
-  }else{
-   Math.abs(dx)>Math.abs(dy)
-    ?tryMove(0,Math.sign(dx),0)
-    :tryMove(0,0,Math.sign(dy));
-  }
- });
+// Floating stick on the arena: drag anywhere to move, quick tap = fire
+let ao=null,at=0,am=0,adir=null;
+bindStick(wrap,true,e=>e.target===c&&e.pointerType!='mouse',(x,y)=>{ao=[x,y];at=performance.now();am=0},(x,y)=>{const dx=x-ao[0],dy=y-ao[1],m=Math.hypot(dx,dy);am=Math.max(am,m);
+ adir=m>14?(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]):null;if(m>40){ao[0]+=dx*.5;ao[1]+=dy*.5}},()=>{adir=null;if(am<14&&performance.now()-at<350)fire(0)});
 applyCfg();
 // Wrappers: input routing, online guard, sounds
-const _dirOf=dirOf;dirOf=function(i){const c0=jdir;if(net.role=='host')return i?gin.d:(c0||_dirOf(0));if(net.role=='guest')return c0||_dirOf(0);return i==0?(c0||_dirOf(0)):_dirOf(i)};
+const _dirOf=dirOf;dirOf=function(i){const c0=jdir||adir;if(net.role=='host')return i?gin.d:(c0||_dirOf(0));if(net.role=='guest')return c0||_dirOf(0);return i==0?(c0||_dirOf(0)):_dirOf(i)};
 const _keyDir=keyDir;keyDir=function(i,k){if(net.role=='guest')return;if(net.role=='host')return i?undefined:_keyDir(0,k);return _keyDir(i,k)};
 const _fire=fire;fire=function(i){if(net.role=='guest'){if(i==0){net.fc=(net.fc|0)+1;net.rm&&net.rm.presence({f:net.fc}).catch(()=>{})}return}_fire(i)};
 const _tryMove=tryMove;tryMove=function(i,dx,dy){if(net.role=='guest')return;_tryMove(i,dx,dy)};
